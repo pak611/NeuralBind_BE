@@ -1,0 +1,14 @@
+protein = C:\Users\patri\Dropbox\Ph.D\OrganoNet\Websites\NeuralBind_FEBE\NeuralBind_BE\docking\receptors\3lw0_cleaned.pdbqt
+    ligand = bound_muOR.pdb
+
+    center_x = 3.5
+    center_y = 3.5
+    center_z = 10.0
+
+    size_x = 5.0
+    size_y = 5.0
+    size_z = 0.0
+
+    energy_range = 4
+    exhaustiveness = 8
+    num_modes = 10
