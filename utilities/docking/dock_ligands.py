@@ -19,20 +19,22 @@ import glob
 #from concurrent.futures TimeoutError
 
 import os
+import sys
+
+
+
+
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-
-import sys
 sys.path.append('C:/Users/patri/Dropbox/Ph.D/OrganoNet/Websites/NeuralBind_FEBE/NeuralBind_BE')
 
-from nb_app import models
-
-
-
-from models import DockingProgress  # Replace 'your_app_name' with the name of your Django app
-
+# import DockingProgress model from your Django app's models.py file
+#from nb_app.models import DockingProgress
 
 def update_progress(task_id, processed_count):
+
+    from nb_app.models import DockingProgress # import into function to avoid initialization issues
     progress = DockingProgress.objects.get(task_id=task_id)
     progress.processed_ligands = processed_count
     progress.save()
@@ -104,7 +106,7 @@ def prepLigand(filehandle,basePath):
         print("file has been removed")
     return 0
 
-def dockSingLig(filehandle, receptorFile, configFile, basePath, task_id):
+def dockSingLig(filehandle, receptorFile, configFile, basePath, idx, task_id=None):
 
 
     #vinaPath = f'{args.mgltools}vina'
@@ -143,7 +145,7 @@ def dockSingLig(filehandle, receptorFile, configFile, basePath, task_id):
 
     os.system(cmd)
     # Update progress
-    update_progress(task_id=task_id, processed_count=i)
+    update_progress(task_id=task_id, processed_count=idx)
 
 
     return 1
@@ -253,6 +255,8 @@ def parseSmiList(basePath, task_id):
 
 
 def main():
+
+    
 
     parser = argparse.ArgumentParser(description='run docking')
     parser.add_argument('--base_directory', type=str, help='Input base directory name', required=True)

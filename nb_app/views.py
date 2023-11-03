@@ -24,6 +24,9 @@ import shutil
 import subprocess
 from subprocess import CalledProcessError, run
 from .models import DockingProgress
+from .tasks import run_docking_task
+
+import random
 
 @api_view(['POST'])
 def submit_form(request):
@@ -82,29 +85,36 @@ def submit_form(request):
     pdb_file = form_data.pdb_file
 
     if pdb_file:
-        source_path = os.path.join(settings.MEDIA_ROOT, pdb_file.name )
-        pdbFileName = pdb_file.name.replace('uploads/','')
+        source_path = os.path.join(settings.MEDIA_ROOT, pdb_file.name)
+        pdbFileName = pdb_file.name.replace('uploads/', '')
         destination_path = os.path.join(settings.BE_BASE_DIR, 'utilities', 'docking', 'receptors', pdbFileName)
         destination_path = os.path.normpath(destination_path)
-        print('stop here')
         shutil.move(source_path, destination_path)
 
+        # Rename the file
+        #new_file_name = f'{random.randint(0,9)}new_name.pdb'
+        new_file_name = f'{os.path.splitext(pdbFileName)[0]}_123.pdbqt'
+        new_file_path = os.path.join(settings.BE_BASE_DIR, 'utilities', 'docking', 'receptors', new_file_name)
+        os.rename(destination_path, new_file_path)
 
-    cmd = ['python',f'{settings.BE_BASE_DIR}//utilities//docking//prep_receptor.py', '--basePath', f'{settings.BE_BASE_DIR}', '--filePath', f'{destination_path}'] # clean the .pdb file
+        cmd = ['python', f'{settings.BE_BASE_DIR}//utilities//docking//prep_receptor.py', '--basePath', f'{settings.BE_BASE_DIR}', '--filePath', f'{new_file_path}']
 
-    try:
-        result = run(cmd, check=True) 
+        try:
+            result = run(cmd, check=True) 
 
-        # moving the .pdbqt file
-        pdbqt_filename = os.path.splitext(pdbFileName)[0] + ".pdbqt"
-        pdbqt_source_path = os.path.join(settings.BASE_DIR, pdbqt_filename)
-        pdbqt_destination_path = os.path.join(os.path.dirname(destination_path), '..//cleaned_receptors', pdbqt_filename)
-        shutil.move(pdbqt_source_path, pdbqt_destination_path)
+            # moving the .pdbqt file
+            pdbqt_filename = os.path.splitext(new_file_name)[0] + ".pdbqt"
+            pdbqt_source_path = os.path.join(settings.BE_BASE_DIR, 'utilities', 'docking', 'receptors', pdbqt_filename)
+            pdbqt_destination_path = os.path.join(settings.BE_BASE_DIR, 'utilities', 'docking', 'cleaned_receptors', pdbqt_filename)
+            shutil.move(pdbqt_source_path, pdbqt_destination_path)
+
+        except CalledProcessError as e:
+            print(e)
+            return JsonResponse({'message': 'Error cleaning file', 'success': False})
 
         return JsonResponse({'message': 'File cleaned successfully', 'success': True})
-    
-    except CalledProcessError:
-        return JsonResponse({'message': 'There was an error cleaning the file'})
+
+
     
 
 
@@ -155,24 +165,24 @@ def run_docking(request):
 
     total_ligands_count = 123  # Replace this with actual code that determines the count
     progress = DockingProgress.objects.create(total_ligands=total_ligands_count)
-  # You'd need to set the total ligands here
 
-    cmd = [
-        'python', f'{settings.BE_BASE_DIR}/utilities/docking/dock_ligands.py',
-        '--base_directory', f'{settings.BE_BASE_DIR}',
-        '--task_id', str(progress.task_id)
-    ]
-    try:
-        result = run(cmd, check=True) 
-        return JsonResponse({'message': 'Docking study completed successfully', 'success': True})
-    
-    except CalledProcessError:
-        return JsonResponse({'message': 'Docking study failed'})
+    # Call the Celery task
+    task = run_docking_task.delay(total_ligands_count, progress.task_id)
+
+    return JsonResponse({'message': 'Docking process started', 'task_id': task.id})
+
     
 
+@api_view(['GET'])
+def check_docking_progress(request, task_id):
 
-def get_docking_progress(request):
-    task_id = "task_001"
-    progress = DockingProgress.objects.get(task_id=task_id)
-    percentage = (progress.ligands_docked / progress.total_ligands) * 100
-    return JsonResponse({'progress': percentage})
+    task = run_docking_task.AsyncResult(task_id)
+    if task.state == 'PENDING':
+        return JsonResponse({'state': task.state, 'message': 'Task is pending...'})
+    elif task.state == 'SUCCESS':
+        return JsonResponse({'state': task.state, 'message': task.result['message'], 'success': task.result['success']})
+    elif task.state == 'FAILURE':
+        return JsonResponse({'state': task.state, 'message': 'Task failed!'})
+    else:
+        return JsonResponse({'state': task.state, 'message': 'Task is running...'})
+    
