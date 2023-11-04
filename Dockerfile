@@ -7,6 +7,18 @@ WORKDIR /app
 # Copy the current directory contents into the container at /app
 COPY . /app
 
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libffi-dev \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+
+RUN apt-get update && apt-get install -y build-essential libffi-dev
+
+
+# Upgrade pip
 RUN pip install --upgrade pip
 
 # Install any needed packages specified in requirements.txt
@@ -15,8 +27,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Define environment variable
 ENV NAME World
 
-# Install Celery
+# Install Celery with Redis support
 RUN pip install celery[redis]
 
-# Expose port for the Celery worker (optional)
-EXPOSE 5555
+# Expose port for the web application
+EXPOSE 8000
+
+# Command to run the application
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

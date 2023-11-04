@@ -28,7 +28,7 @@ SECRET_KEY = "django-insecure-(=!%ju(lf%*y#)=o4#t)bf_6%*3pgz0^)ncodl2!h&7k2!m&up
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -58,7 +58,8 @@ MIDDLEWARE = [
 
 
 # celery configurations
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_BROKER_URL = 'redis://redis:6379/0'
+CELERY_RESULT_BACKEND = 'django-db'
 
 MEDIA_ROOT  = os.path.join(BASE_DIR, 'media/')
 
