@@ -1,11 +1,31 @@
-version: '3'
+version: '3.4'
+
 services:
-  web:
-    image: celery-app  # Use the name of your app's Docker image
+  vscodedjangodocker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
     ports:
-      - "8000:8000"
+      - 8000:8000
     depends_on:
       - redis
+    volumes:
+      - .:/code
+
+  celeryworker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A nb_proj worker --loglevel=info
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=django-db
+    depends_on:
+      - redis
+    volumes:
+      - .:/code
+
   redis:
     image: "redis:alpine"
     ports:

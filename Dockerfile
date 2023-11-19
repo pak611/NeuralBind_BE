@@ -12,11 +12,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libffi-dev \
     libssl-dev \
+    build-essential \
+    libffi-dev \
+    telnet \
+    netcat \
     && rm -rf /var/lib/apt/lists/*
-
-
-RUN apt-get update && apt-get install -y build-essential libffi-dev
-
 
 # Upgrade pip
 RUN pip install --upgrade pip
